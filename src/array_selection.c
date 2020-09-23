@@ -1,20 +1,13 @@
 /****************************************************************************
- *                    Manipulation of an array selection                    *
+ *             Manipulation of a user-supplied array selection              *
  *                            Author: H. Pag\`es                            *
  ****************************************************************************/
-#include "HDF5Array.h"
+#include "array_selection.h"
+
+#include "global_errmsg_buf.h"
 
 #include <limits.h>  /* for INT_MAX, LLONG_MAX, LLONG_MIN */
-
 //#include <time.h>
-
-
-char * _HDF5Array_errmsg_buf()
-{
-	static char buf[ERRMSG_BUF_LENGTH];
-
-	return buf;
-}
 
 
 /****************************************************************************
@@ -118,7 +111,7 @@ static const long long int *check_dim(SEXP dim)
 	for (i = 0; i < ndim; i++) {
 		ret = get_untrusted_elt(dim, i, &d, "dim", -1);
 		if (ret < 0)
-			error(_HDF5Array_errmsg_buf());
+			error(_HDF5Array_global_errmsg_buf());
 		dim_p[i] = d;
 	}
 	return dim_p;
@@ -353,13 +346,13 @@ SEXP C_check_selection(SEXP dim, SEXP starts, SEXP counts)
 	ndim = LENGTH(dim);
 	ret = _shallow_check_selection(ndim, starts, counts);
 	if (ret < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 
 	selection_dim_buf = new_IntAE(ndim, ndim, 0);
 	selection_len = _check_selection(ndim, dim_p, starts, counts,
 					 selection_dim_buf->elts);
 	if (selection_len < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 	return new_INTEGER_from_IntAE(selection_dim_buf);
 }
 
@@ -529,7 +522,7 @@ SEXP C_check_ordered_selection(SEXP dim, SEXP starts, SEXP counts)
 	ndim = LENGTH(dim);
 	ret = _shallow_check_selection(ndim, starts, counts);
 	if (ret < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 
 	selection_dim_buf = new_IntAE(ndim, ndim, 0);
 	nstart_buf = new_IntAE(ndim, ndim, 0);
@@ -540,7 +533,7 @@ SEXP C_check_ordered_selection(SEXP dim, SEXP starts, SEXP counts)
 				nstart_buf->elts, nblock_buf->elts,
 				last_block_start_buf->elts);
 	if (selection_len < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 	return new_INTEGER_from_IntAE(selection_dim_buf);
 }
 
@@ -714,7 +707,7 @@ SEXP C_reduce_selection(SEXP dim, SEXP starts, SEXP counts)
 	ndim = LENGTH(dim);
 	ret = _shallow_check_selection(ndim, starts, counts);
 	if (ret < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 
 	selection_dim_buf = new_IntAE(ndim, ndim, 0);
 	nstart_buf = new_IntAE(ndim, ndim, 0);
@@ -727,7 +720,7 @@ SEXP C_reduce_selection(SEXP dim, SEXP starts, SEXP counts)
 				nstart_buf->elts, nblock_buf->elts,
 				last_block_start_buf->elts);
 	if (selection_len < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 	if (!_selection_can_be_reduced(ndim,
 				       nstart_buf->elts,
 				       nblock_buf->elts))
@@ -747,11 +740,11 @@ SEXP C_reduce_selection(SEXP dim, SEXP starts, SEXP counts)
 static int map_start_to_chunks(int along,
 		long long int d, long long int chunkd, SEXP start,
 		int *nstart_buf,
-		IntAE *breakpoint_buf, LLongAE *chunkidx_buf)
+		IntAE *breakpoint_buf, LLongAE *tchunkidx_buf)
 {
 	int n, i, ret;
-	size_t nchunk;
-	long long int min_start, s, chunkidx, prev_chunkidx;
+	size_t ntchunk;
+	long long int min_start, s, tchunkidx, prev_tchunkidx;
 
 	if (start == R_NilValue) {
 		if (d > INT_MAX) {
@@ -766,11 +759,11 @@ static int map_start_to_chunks(int along,
 		return -1;
 
 	if (IntAE_get_nelt(breakpoint_buf) != 0 ||
-	    LLongAE_get_nelt(chunkidx_buf) != 0) {
+	    LLongAE_get_nelt(tchunkidx_buf) != 0) {
 		/* Should never happen! */
 		PRINT_TO_ERRMSG_BUF("internal error: map_start_to_chunks() "
 				    "was called with non-empty breakpoint "
-				    "or chunkidx buffers");
+				    "or tchunkidx buffers");
 		return -1;
 	}
 
@@ -780,7 +773,7 @@ static int map_start_to_chunks(int along,
 	if (n == 0)
 		return 0;
 
-	/* Get 's' and 'chunkidx' for 1st 'start' element. */
+	/* Get 's' and 'tchunkidx' for 1st 'start' element. */
 	ret = get_untrusted_start(start, 0, &s, 1, along, 1);
 	if (ret < 0)
 		return -1;
@@ -788,10 +781,10 @@ static int map_start_to_chunks(int along,
 		set_errmsg_for_selection_beyond_dim(along + 1, 0, 1);
 		return -1;
 	}
-	chunkidx = (s - 1) / chunkd;
+	tchunkidx = (s - 1) / chunkd;
 
 	/* Walk on the remaining 'start' elements. */
-	nchunk = 0;
+	ntchunk = 0;
 	for (i = 1; i < n; i++) {
 		min_start = s + 1;
 		ret = get_untrusted_start(start, i, &s, min_start, along, 1);
@@ -801,33 +794,33 @@ static int map_start_to_chunks(int along,
 			set_errmsg_for_selection_beyond_dim(along + 1, i, 1);
 			return -1;
 		}
-		prev_chunkidx = chunkidx;
-		chunkidx = (s - 1) / chunkd;
-		if (chunkidx > prev_chunkidx) {
-			IntAE_insert_at(breakpoint_buf, nchunk, i);
-			LLongAE_insert_at(chunkidx_buf, nchunk, prev_chunkidx);
-			nchunk++;
+		prev_tchunkidx = tchunkidx;
+		tchunkidx = (s - 1) / chunkd;
+		if (tchunkidx > prev_tchunkidx) {
+			IntAE_insert_at(breakpoint_buf, ntchunk, i);
+			LLongAE_insert_at(tchunkidx_buf, ntchunk,
+					  prev_tchunkidx);
+			ntchunk++;
 		}
 	}
-	IntAE_insert_at(breakpoint_buf, nchunk, n);
-	LLongAE_insert_at(chunkidx_buf, nchunk, chunkidx);
+	IntAE_insert_at(breakpoint_buf, ntchunk, n);
+	LLongAE_insert_at(tchunkidx_buf, ntchunk, tchunkidx);
 	return 0;
 }
 
-/* 'dim' and 'chunkdim' must point to arrays of 'ndim' elements.
+/* 'dim', 'chunkdim', and 'nstart_buf' must point to arrays of 'ndim' elements.
 
    'starts' is **assumed** to be NULL or a list of length 'ndim'.
    This should have been already checked by _shallow_check_selection() so is
    not checked again.
 
-   Each of 'nstart_buf', 'breakpoint_bufs', and 'chunkidx_bufs' must point
-   to an array of 'ndim' elements.
+   'breakpoint_bufs' and 'tchunkidx_bufs' must be of length 'ndim'.
 */
 int _map_starts_to_chunks(int ndim, const long long int *dim,
 		const long long int *chunkdim,
 		SEXP starts,
 		int *nstart_buf,
-		IntAEAE *breakpoint_bufs, LLongAEAE *chunkidx_bufs)
+		IntAEAE *breakpoint_bufs, LLongAEAE *tchunkidx_bufs)
 {
 	int along, ret;
 	SEXP start;
@@ -838,7 +831,7 @@ int _map_starts_to_chunks(int ndim, const long long int *dim,
 					  dim[along], chunkdim[along], start,
 					  nstart_buf,
 					  breakpoint_bufs->elts[along],
-					  chunkidx_bufs->elts[along]);
+					  tchunkidx_bufs->elts[along]);
 		if (ret < 0)
 			return -1;
 	}
@@ -895,8 +888,8 @@ static SEXP to_numeric_LIST(int ndim, const LLongAEAE *aeae, SEXP starts)
 
 /* --- .Call ENTRY POINT ---
  * Return a list of length 2:
- *   - The 1st list element is the list of break points.
- *   - The 2nd list element is the list of chunk indices.
+ *   - The 1st list element is the list of break points along each dim.
+ *   - The 2nd list element is the list of touched chunk ids along each dim.
  * The 2 lists have the same length as 'starts'. Also they have the same
  * shape (i.e. same lengths()).
  */
@@ -908,14 +901,14 @@ SEXP C_map_starts_to_chunks(SEXP starts, SEXP dim, SEXP chunkdim)
 	long long int chunkd;
 	IntAE *nstart_buf;
 	IntAEAE *breakpoint_bufs;
-	LLongAEAE *chunkidx_bufs;
+	LLongAEAE *tchunkidx_bufs;
 	SEXP ans, ans_elt;
 
 	dim_p = check_dim(dim);
 	ndim = LENGTH(dim);
 	ret = _shallow_check_selection(ndim, starts, R_NilValue);
 	if (ret < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 
 	if (!(IS_INTEGER(chunkdim) || IS_NUMERIC(chunkdim)))
 		error("'chunkdim' must be an integer vector");
@@ -925,7 +918,7 @@ SEXP C_map_starts_to_chunks(SEXP starts, SEXP dim, SEXP chunkdim)
 	for (i = 0; i < ndim; i++) {
 		ret = get_untrusted_elt(chunkdim, i, &chunkd, "chunkdim", -1);
 		if (ret < 0)
-			error(_HDF5Array_errmsg_buf());
+			error(_HDF5Array_global_errmsg_buf());
 		if (chunkd < 0)
 			error("'chunkdim' cannot contain negative values");
 		if (chunkd == 0 && dim_p[i] != 0)
@@ -937,19 +930,19 @@ SEXP C_map_starts_to_chunks(SEXP starts, SEXP dim, SEXP chunkdim)
 
 	nstart_buf = new_IntAE(ndim, ndim, 0);
 	breakpoint_bufs = new_IntAEAE(ndim, ndim);
-	chunkidx_bufs = new_LLongAEAE(ndim, ndim);
+	tchunkidx_bufs = new_LLongAEAE(ndim, ndim);
 	ret = _map_starts_to_chunks(ndim, dim_p, chunkdim_buf->elts,
 			starts,
 			nstart_buf->elts,
-			breakpoint_bufs, chunkidx_bufs);
+			breakpoint_bufs, tchunkidx_bufs);
 	if (ret < 0)
-		error(_HDF5Array_errmsg_buf());
+		error(_HDF5Array_global_errmsg_buf());
 
 	ans = PROTECT(NEW_LIST(2));
 	ans_elt = PROTECT(to_integer_LIST(ndim, breakpoint_bufs, starts));
 	SET_VECTOR_ELT(ans, 0, ans_elt);
 	UNPROTECT(1);
-	ans_elt = PROTECT(to_numeric_LIST(ndim, chunkidx_bufs, starts));
+	ans_elt = PROTECT(to_numeric_LIST(ndim, tchunkidx_bufs, starts));
 	SET_VECTOR_ELT(ans, 1, ans_elt);
 	UNPROTECT(2);
 	return ans;

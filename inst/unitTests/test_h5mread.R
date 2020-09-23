@@ -248,7 +248,8 @@ test_h5mread_2D <- function()
         checkIdentical(m[2:8, 4:5, drop=FALSE], current)
     }
 
-    chunkdims <- list(c(10, 6),
+    chunkdims <- list(0,         # no chunking (i.e. contiguous data)
+                      c(10, 6),
                       c(10, 1),
                       c( 1, 6),
                       c( 4, 5),
@@ -265,9 +266,11 @@ test_h5mread_2D <- function()
         do_2D_tests(m0, M0, method=2L)
         do_2D_tests(m0, M0, method=3L)
         do_2D_tests(m0, M0, noreduce=TRUE, method=3L)
-        do_2D_tests(m0, M0, method=4L)
-        do_2D_tests(m0, M0, method=6L)
-        do_2D_tests(m0, M0, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m0, M0, method=4L)
+            do_2D_tests(m0, M0, method=6L)
+            do_2D_tests(m0, M0, method=7L)
+        }
         do_2D_tests(m0, M0)
     }
 
@@ -281,16 +284,20 @@ test_h5mread_2D <- function()
         do_2D_tests(m1, M1, method=2L)
         do_2D_tests(m1, M1, method=3L)
         do_2D_tests(m1, M1, noreduce=TRUE, method=3L)
-        do_2D_tests(m1, M1, method=4L)
-        do_2D_tests(m1, M1, method=6L)
-        do_2D_tests(m1, M1, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m1, M1, method=4L)
+            do_2D_tests(m1, M1, method=6L)
+            do_2D_tests(m1, M1, method=7L)
+        }
         do_2D_tests(m1, M1)
         storage.mode(m1) <- "integer"
         do_2D_tests(m1, M1, as.integer=TRUE)
         do_2D_tests(m1, M1, as.integer=TRUE, method=1L)
-        do_2D_tests(m1, M1, as.integer=TRUE, method=4L)
-        do_2D_tests(m1, M1, as.integer=TRUE, method=6L)
-        do_2D_tests(m1, M1, as.integer=TRUE, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m1, M1, as.integer=TRUE, method=4L)
+            do_2D_tests(m1, M1, as.integer=TRUE, method=6L)
+            do_2D_tests(m1, M1, as.integer=TRUE, method=7L)
+        }
     }
 
     ## with a numeric matrix
@@ -303,16 +310,20 @@ test_h5mread_2D <- function()
         do_2D_tests(m2, M2, method=2L)
         do_2D_tests(m2, M2, method=3L)
         do_2D_tests(m2, M2, noreduce=TRUE, method=3L)
-        do_2D_tests(m2, M2, method=4L)
-        do_2D_tests(m2, M2, method=6L)
-        do_2D_tests(m2, M2, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m2, M2, method=4L)
+            do_2D_tests(m2, M2, method=6L)
+            do_2D_tests(m2, M2, method=7L)
+        }
         do_2D_tests(m2, M2)
         storage.mode(m2) <- "integer"
         do_2D_tests(m2, M2, as.integer=TRUE)
         do_2D_tests(m2, M2, as.integer=TRUE, method=1L)
-        do_2D_tests(m2, M2, as.integer=TRUE, method=4L)
-        do_2D_tests(m2, M2, as.integer=TRUE, method=6L)
-        do_2D_tests(m2, M2, as.integer=TRUE, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m2, M2, as.integer=TRUE, method=4L)
+            do_2D_tests(m2, M2, as.integer=TRUE, method=6L)
+            do_2D_tests(m2, M2, as.integer=TRUE, method=7L)
+        }
     }
 
     ## with a character matrix
@@ -321,6 +332,38 @@ test_h5mread_2D <- function()
     for (chunkdim in chunkdims) {
         M3 <- writeHDF5Array(m3, chunkdim=chunkdim)
         do_2D_tests(m3, M3, method=4L)
+    }
+
+    m3[cbind(5:10, 6:1)] <- NA_character_
+    for (chunkdim in chunkdims) {
+        M3 <- writeHDF5Array(m3, chunkdim=chunkdim)
+        do_2D_tests(m3, M3, method=4L)
+    }
+
+    ## with a raw matrix
+
+    m4 <- m0
+    storage.mode(m4) <- "raw"
+    for (chunkdim in chunkdims) {
+        M4 <- writeHDF5Array(m4, chunkdim=chunkdim)
+        do_2D_tests(m4, M4, method=1L)
+        do_2D_tests(m4, M4, noreduce=TRUE, method=1L)
+        do_2D_tests(m4, M4, method=2L)
+        do_2D_tests(m4, M4, method=3L)
+        do_2D_tests(m4, M4, noreduce=TRUE, method=3L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m4, M4, method=4L)
+            do_2D_tests(m4, M4, method=6L)
+            do_2D_tests(m4, M4, method=7L)
+        }
+        do_2D_tests(m4, M4)
+        do_2D_tests(m0, M4, as.integer=TRUE)
+        do_2D_tests(m0, M4, as.integer=TRUE, method=1L)
+        if (!identical(chunkdim, 0)) {
+            do_2D_tests(m0, M4, as.integer=TRUE, method=4L)
+            do_2D_tests(m0, M4, as.integer=TRUE, method=6L)
+            do_2D_tests(m0, M4, as.integer=TRUE, method=7L)
+        }
     }
 }
 
@@ -392,7 +435,8 @@ test_h5mread_3D <- function()
         checkIdentical(a[2:8, 11:15, 4:5, drop=FALSE], current)
     }
 
-    chunkdims <- list(c(10, 15, 6),
+    chunkdims <- list(0,             # no chunking (i.e. contiguous data)
+                      c(10, 15, 6),
                       c(10, 15, 1),
                       c(10,  1, 6),
                       c( 1, 15, 6),
@@ -412,9 +456,11 @@ test_h5mread_3D <- function()
         do_3D_tests(a0, A0, method=2L)
         do_3D_tests(a0, A0, method=3L)
         do_3D_tests(a0, A0, noreduce=TRUE, method=3L)
-        do_3D_tests(a0, A0, method=4L)
-        do_3D_tests(a0, A0, method=6L)
-        do_3D_tests(a0, A0, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a0, A0, method=4L)
+            do_3D_tests(a0, A0, method=6L)
+            do_3D_tests(a0, A0, method=7L)
+        }
         do_3D_tests(a0, A0)
     }
 
@@ -428,16 +474,20 @@ test_h5mread_3D <- function()
         do_3D_tests(a1, A1, method=2L)
         do_3D_tests(a1, A1, method=3L)
         do_3D_tests(a1, A1, noreduce=TRUE, method=3L)
-        do_3D_tests(a1, A1, method=4L)
-        do_3D_tests(a1, A1, method=6L)
-        do_3D_tests(a1, A1, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a1, A1, method=4L)
+            do_3D_tests(a1, A1, method=6L)
+            do_3D_tests(a1, A1, method=7L)
+        }
         do_3D_tests(a1, A1)
         storage.mode(a1) <- "integer"
         do_3D_tests(a1, A1, as.integer=TRUE)
         do_3D_tests(a1, A1, as.integer=TRUE, method=1L)
-        do_3D_tests(a1, A1, as.integer=TRUE, method=4L)
-        do_3D_tests(a1, A1, as.integer=TRUE, method=6L)
-        do_3D_tests(a1, A1, as.integer=TRUE, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a1, A1, as.integer=TRUE, method=4L)
+            do_3D_tests(a1, A1, as.integer=TRUE, method=6L)
+            do_3D_tests(a1, A1, as.integer=TRUE, method=7L)
+        }
     }
 
     ## with a numeric array
@@ -450,16 +500,20 @@ test_h5mread_3D <- function()
         do_3D_tests(a2, A2, method=2L)
         do_3D_tests(a2, A2, method=3L)
         do_3D_tests(a2, A2, noreduce=TRUE, method=3L)
-        do_3D_tests(a2, A2, method=4L)
-        do_3D_tests(a2, A2, method=6L)
-        do_3D_tests(a2, A2, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a2, A2, method=4L)
+            do_3D_tests(a2, A2, method=6L)
+            do_3D_tests(a2, A2, method=7L)
+        }
         do_3D_tests(a2, A2)
         storage.mode(a2) <- "integer"
         do_3D_tests(a2, A2, as.integer=TRUE)
         do_3D_tests(a2, A2, as.integer=TRUE, method=1L)
-        do_3D_tests(a2, A2, as.integer=TRUE, method=4L)
-        do_3D_tests(a2, A2, as.integer=TRUE, method=6L)
-        do_3D_tests(a2, A2, as.integer=TRUE, method=7L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a2, A2, as.integer=TRUE, method=4L)
+            do_3D_tests(a2, A2, as.integer=TRUE, method=6L)
+            do_3D_tests(a2, A2, as.integer=TRUE, method=7L)
+        }
     }
 
     ## with a character array
@@ -468,6 +522,33 @@ test_h5mread_3D <- function()
     for (chunkdim in chunkdims) {
         A3 <- writeHDF5Array(a3, chunkdim=chunkdim)
         do_3D_tests(a3, A3, method=4L)
+    }
+
+    ## with a raw array
+
+    a0 <- a0 %% 256L
+    a4 <- a0
+    storage.mode(a4) <- "raw"
+    for (chunkdim in chunkdims) {
+        A4 <- writeHDF5Array(a4, chunkdim=chunkdim)
+        do_3D_tests(a4, A4, method=1L)
+        do_3D_tests(a4, A4, noreduce=TRUE, method=1L)
+        do_3D_tests(a4, A4, method=2L)
+        do_3D_tests(a4, A4, method=3L)
+        do_3D_tests(a4, A4, noreduce=TRUE, method=3L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a4, A4, method=4L)
+            do_3D_tests(a4, A4, method=6L)
+            do_3D_tests(a4, A4, method=7L)
+        }
+        do_3D_tests(a4, A4)
+        do_3D_tests(a0, A4, as.integer=TRUE)
+        do_3D_tests(a0, A4, as.integer=TRUE, method=1L)
+        if (!identical(chunkdim, 0)) {
+            do_3D_tests(a0, A4, as.integer=TRUE, method=4L)
+            do_3D_tests(a0, A4, as.integer=TRUE, method=6L)
+            do_3D_tests(a0, A4, as.integer=TRUE, method=7L)
+        }
     }
 }
 

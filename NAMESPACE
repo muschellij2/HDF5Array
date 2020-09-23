@@ -2,6 +2,7 @@ useDynLib(HDF5Array)
 
 import(methods)
 importFrom(utils, read.table)
+importFrom(stats, setNames)
 importFrom(tools, file_path_as_absolute)
 importFrom(Matrix, sparseMatrix)
 
@@ -17,7 +18,7 @@ import(rhdf5)
 ###
 
 exportClasses(
-    DSetHandle,
+    H5DSetDescriptor,
     HDF5ArraySeed,
     HDF5Array, HDF5Matrix,
     ReshapedHDF5ArraySeed,
@@ -46,7 +47,7 @@ exportMethods(
     ## Methods for generics defined in the DelayedArray package:
     extract_array,
     sparsity, is_sparse, extract_sparse_array,
-    read_sparse_block, write_sparse_block, write_block,
+    read_sparse_block, write_block,
     matrixClass, DelayedArray, chunkdim,
     close
 )
@@ -57,9 +58,10 @@ exportMethods(
 ###
 
 export(
-    DSetHandle, destroy_DSetHandle, get_h5mread_returned_type,
+    H5DSetDescriptor, destroy_H5DSetDescriptor, get_h5mread_returned_type,
     h5mread,
     h5mread_from_reshaped,
+    set_h5dimnames, get_h5dimnames, h5writeDimnames, h5readDimnames,
     HDF5ArraySeed,
     HDF5Array,
     ReshapedHDF5ArraySeed,

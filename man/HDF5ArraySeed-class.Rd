@@ -7,7 +7,9 @@
 
 \alias{path,HDF5ArraySeed-method}
 \alias{path<-,HDF5ArraySeed-method}
+\alias{type,HDF5ArraySeed-method}
 \alias{dim,HDF5ArraySeed-method}
+\alias{dimnames,HDF5ArraySeed-method}
 \alias{extract_array,HDF5ArraySeed-method}
 \alias{chunkdim,HDF5ArraySeed-method}
 
