@@ -37,3 +37,4 @@ Collate: DSetHandle-class.R
 	TENxMatrix-class.R
 	writeTENxMatrix.R
 	zzz.R
+RoxygenNote: 7.0.1
